@@ -10,7 +10,7 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [serverConnected, setServerConnected] = useState(null);
 
-  const SERVER = 'http://localhost:5001';
+  const SERVER = 'https://document-ocr-capstone-production.up.railway.app';
 
   // Test server connection on mount
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function Login({ onLogin }) {
       let errorMessage = 'Network error';
       
       if (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK') {
-        errorMessage = 'Cannot connect to server. Please make sure the backend is running on http://localhost:5001';
+        errorMessage = 'Cannot connect to server. Please make sure the backend is running.';
       } else if (err.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout. Please try again.';
       } else if (err.response) {
@@ -220,7 +220,7 @@ export default function Login({ onLogin }) {
               ⚠️ Cannot connect to backend server.
               <br />
               <span style={{ fontSize: 12, opacity: 0.9 }}>
-                Make sure the backend is running on http://localhost:5001
+                Make sure your backend on Railway is running: {SERVER}
               </span>
             </div>
           )}

@@ -6,7 +6,7 @@ const Search = forwardRef(function Search(props, ref){
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState('');
   const [stats, setStats] = useState({ documents: 0, pages: 0, searches: 0 });
-  const SERVER = 'http://localhost:5001';
+  const SERVER = 'https://document-ocr-capstone-production.up.railway.app';
   const searchSSERef = useRef(null);
 
   // Fetch stats on mount and subscribe to server-sent events for realtime updates.

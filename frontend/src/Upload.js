@@ -12,7 +12,7 @@ export default function Upload({ onUploadComplete }){
   const [selectedPage, setSelectedPage] = useState(1);
   const evtSourceRef = useRef();
   const inputRef = useRef();
-  const SERVER = 'http://localhost:5001';
+  const SERVER = 'https://document-ocr-capstone-production.up.railway.app';
 
   function handleChoose(e){
     const f = e.target.files[0];

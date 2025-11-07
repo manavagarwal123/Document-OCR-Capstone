@@ -54,20 +54,22 @@ mongoose.connection.on('disconnected', () => {
 const app = express();
 
 // CORS configuration - allow all origins in development
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://document-ocr-capstone-production.up.railway.app',
+  'https://preeminent-mooncake-427e76.netlify.app'
+];
+
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+  origin: function(origin, callback) {
     if (!origin) return callback(null, true);
-    // Allow localhost on any port
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
-    }
-    callback(null, true); // Allow all origins in development
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Blocked by CORS: ' + origin), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  exposedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Log all requests for debugging
