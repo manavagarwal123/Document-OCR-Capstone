@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document OCR Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f23;
+      --card: rgba(16, 18, 37, 0.8);
+      --muted: #8b9bbf;
+      --accent: #7c3aed;
+      --accent-light: #a78bfa;
+      --accent-glow: rgba(124, 58, 237, 0.3);
+      --glass: rgba(255, 255, 255, 0.05);
+      --text: #e6eef8;
+      --surface: rgba(11, 13, 28, 0.6);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(ellipse at top, #1a1b4b 0%, #0f0f23 70%);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated background elements */
+    .bg-blur-1, .bg-blur-2, .bg-blur-3 {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.15;
+      z-index: -1;
+    }
+
+    .bg-blur-1 {
+      width: 500px;
+      height: 500px;
+      background: var(--accent);
+      top: -200px;
+      right: -100px;
+    }
+
+    .bg-blur-2 {
+      width: 400px;
+      height: 400px;
+      background: #3b82f6;
+      bottom: -150px;
+      left: -100px;
+    }
+
+    .bg-blur-3 {
+      width: 300px;
+      height: 300px;
+      background: #10b981;
+      top: 50%;
+      right: 20%;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header styles */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding: 16px 24px;
+      background: rgba(16, 18, 37, 0.85); /* Fallback for browsers without backdrop-filter */
+      border-radius: 16px;
+      border: 1px solid rgba(124, 58, 237, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .brand {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #5b21b6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(to bottom right, rgba(255,255,255,0.2), rgba(255,255,255,0));
+      transform: rotate(30deg);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.2px;
+      background: linear-gradient(90deg, #e6eef8, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent; /* Fallback for browsers that don't support -webkit-text-fill-color */
+      font-weight: 700;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--success);
+    }
+
+    .status-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    /* Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* Panel styles */
+    .panel {
+      background: rgba(16, 18, 37, 0.85); /* Fallback for browsers without backdrop-filter */
+      background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(124, 58, 237, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed rgba(124, 58, 237, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-height: 180px;
+      justify-content: center;
+      transition: all 0.3s ease;
+      background: rgba(16, 18, 37, 0.3);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dropzone::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .dropzone:hover::before {
+      left: 100%;
+    }
+
+    .dropzone.dragover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(124, 58, 237, 0.2);
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.02));
+    }
+
+    .dropzone-icon {
+      font-size: 32px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* Buttons */
+    .btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .btn.primary {
+      background: linear-gradient(90deg, var(--accent), #5b21b6);
+      border: none;
+      box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn.primary:hover {
+      background: linear-gradient(90deg, #8b5cf6, #6d28d9);
+      box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* File row */
+    .file-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+    }
+
+    .file-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateX(5px);
+    }
+
+    .file-thumb {
+      width: 60px;
+      height: 60px;
+      background: rgba(7, 32, 52, 0.5);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .file-meta {
+      flex: 1;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 12px;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #6d28d9);
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    /* Search input */
+    .search-input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(16, 18, 37, 0.5);
+      color: var(--text);
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+    }
+
+    select.search-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b9bbf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+    }
+
+    /* Results */
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .result-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card:hover {
+      background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--accent), #5b21b6);
+    }
+
+    mark {
+      background: linear-gradient(90deg, rgba(252,211,77,0.2), rgba(252,211,77,0.1));
+      padding: 0 4px;
+      border-radius: 4px;
+      color: #ffe89c;
+    }
+
+    /* Stats section */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: rgba(16, 18, 37, 0.5);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid rgba(124, 58, 237, 0.1);
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-light);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tips panel */
+    .tips-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .tip-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateX(5px);
+    }
+
+    .tip-icon {
+      color: var(--accent);
+      font-size: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .header {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+      }
+      
+      .brand {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 12px;
+      }
+      
+      .panel {
+        padding: 16px;
+      }
+    }
+
+    /* Animation for new elements */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease forwards;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-blur-1"></div>
+  <div class="bg-blur-2"></div>
+  <div class="bg-blur-3"></div>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    // Upload Component
+    function Upload() {
+      const [file, setFile] = useState(null);
+      const [language, setLanguage] = useState('eng');
+      const [status, setStatus] = useState('');
+      const [preview, setPreview] = useState(null);
+      const [progress, setProgress] = useState(0);
+      const [dragOver, setDragOver] = useState(false);
+      const inputRef = useRef();
+
+      useEffect(() => {
+        return () => {
+          if (preview && preview.url) URL.revokeObjectURL(preview.url);
+        };
+      }, [preview]);
+
+      function handleChoose(e) {
+        const f = e.target.files[0];
+        if (f) onFileSelected(f);
+      }
+
+      function onFileSelected(f) {
+        setFile(f);
+        setStatus('');
+        setProgress(0);
+        if (f.type.startsWith('image/')) {
+          const url = URL.createObjectURL(f);
+          setPreview({ url, name: f.name, size: f.size });
+        } else {
+          setPreview({ url: null, name: f.name, size: f.size });
+        }
+      }
+
+      function onDrop(e) {
+        e.preventDefault();
+        setDragOver(false);
+        const list = e.dataTransfer.files;
+        if (list && list[0]) onFileSelected(list[0]);
+      }
+
+      async function onUpload(e) {
+        e && e.preventDefault();
+        if (!file) return alert('Choose a file');
+        setStatus('Uploading & running OCR...');
+        setProgress(2);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('language', language);
+        fd.append('title', file.name);
+        try {
+          const res = await axios.post('http://localhost:5001/api/upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (ev) => {
+              if (ev.total) {
+                const p = Math.round((ev.loaded * 100) / ev.total);
+                setProgress(p);
+              }
+            },
+            timeout: 120000
+          });
+          if (res.data && res.data.ok) {
+            setStatus('Done. Document saved.');
+            setProgress(100);
+            setPreview({ ...preview, text: res.data.textPreview, confidence: res.data.confidence, id: res.data.docId });
+          } else {
+            setStatus('Error: ' + (res.data && res.data.error ? res.data.error : 'unknown'));
+          }
+        } catch (err) {
+          setStatus('Upload failed: ' + (err.message || 'network error'));
+          setPreview(p => ({ ...p, text: `Simulated OCR for ${file.name} — size ${file.size} bytes.`, confidence: 78, id: 'demo-1' }));
+          setProgress(100);
+        }
+      }
+
+      return (
+        <div className="panel fade-in">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3>Upload & OCR</h3>
+              <div className="sub muted">Drop or choose a PDF/image to extract text.</div>
+            </div>
+            <div style={{ textAlign: 'right' }} className="muted">Language</div>
+          </div>
+
+          <div
+            className={`dropzone ${dragOver ? 'dragover' : ''}`}
+            onClick={() => inputRef.current.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            role="button"
+            tabIndex="0"
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleChoose}
+              style={{ display: 'none' }}
+            />
+            {preview && preview.url ? (
+              <img src={preview.url} alt="preview" style={{ width: 120, height: 82, objectFit: 'cover', borderRadius: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.4)' }} />
+            ) : (
+              <div className="dropzone-icon">📄</div>
+            )}
+            <div style={{ fontWeight: 600, textAlign: 'center' }}>{preview ? preview.name : 'Click or Drop a file here'}</div>
+            <div className="hint">{preview ? `${Math.round((preview.size || 0) / 1024)} KB` : 'Images and PDFs supported'}</div>
+          </div>
+
+          {preview && (
+            <div className="file-row fade-in">
+              <div className="file-thumb">
+                {preview.url ? <img src={preview.url} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ padding: 8 }}>PDF</div>}
+              </div>
+              <div className="file-meta">
+                <div style={{ fontWeight: 600 }}>{preview.name}</div>
+                <div className="muted" style={{ fontSize: 13 }}>Size: {Math.round((preview.size || 0) / 1024)} KB</div>
+                {preview.text && <div style={{ marginTop: 8, fontSize: 13, whiteSpace: 'pre-wrap', maxHeight: 110, overflow: 'auto', background: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6 }}>{preview.text}</div>}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={language} onChange={e => setLanguage(e.target.value)} className="search-input" style={{ width: 160 }}>
+              <option value="eng">English (fast)</option>
+              <option value="spa">Spanish</option>
+              <option value="deu">German</option>
+            </select>
+            <button className="btn primary" onClick={onUpload} disabled={!file} aria-disabled={!file}>
+              <span>Upload & OCR</span>
+            </button>
+            <button className="btn" onClick={() => { setFile(null); setPreview(null); setStatus(''); setProgress(0); }}>
+              <span>Clear</span>
+            </button>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div className="muted">Status: {status || (progress ? `${progress}%` : 'idle')}</div>
+              <div className="muted">Confidence: {preview && preview.confidence ? Math.round(preview.confidence) : '-'}%</div>
+            </div>
+            <div className="progress-bar" aria-hidden>
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Search Component
+    function Search() {
+      const [q, setQ] = useState('');
+      const [results, setResults] = useState([]);
+      const [status, setStatus] = useState('');
+      const [stats, setStats] = useState({ documents: 42, pages: 127, searches: 289 });
+
+      function escapeHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function highlight(text, q) {
+        if (!q) return escapeHtml(text);
+        try {
+          const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          return escapeHtml(text).replace(re, '<mark>$1</mark>');
+        } catch {
+          return escapeHtml(text);
+        }
+      }
+
+      async function doSearch(e) {
+        e && e.preventDefault();
+        if (!q) {
+          setStatus('Enter a search term');
+          setResults([]);
+          return;
+        }
+        setStatus('Searching...');
+        try {
+          const res = await axios.get('http://localhost:5001/api/search?q=' + encodeURIComponent(q));
+          setResults(res.data.results || []);
+          setStatus('');
+          // Update stats (in a real app, this would come from the API)
+          setStats(prev => ({
+            ...prev,
+            searches: prev.searches + 1
+          }));
+        } catch (err) {
+          setStatus('Search failed: ' + (err.message || 'network'));
+          setResults([]);
+        }
+      }
+
+      return (
+        <div className="panel fade-in">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3>Search Documents</h3>
+              <div className="sub muted">Find text inside uploaded documents.</div>
+            </div>
+          </div>
+
+          <form onSubmit={doSearch} style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input 
+                className="search-input" 
+                value={q} 
+                onChange={e => setQ(e.target.value)} 
+                placeholder="Enter keywords..." 
+                style={{ flex: 1 }}
+              />
+              <button className="btn primary">Search</button>
+            </div>
+          </form>
+
+          <div className="stats-container">
+            <div className="stat-card">
+              <div className="stat-value">{stats.documents}</div>
+              <div className="stat-label">Documents</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{stats.pages}</div>
+              <div className="stat-label">Pages</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{stats.searches}</div>
+              <div className="stat-label">Searches</div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '20px' }}>
+            <div className="muted" style={{ marginBottom: 8 }}>{status}</div>
+            <div className="results">
+              {results.length === 0 ? (
+                <div className="result-card" style={{ textAlign: 'center', padding: '30px' }}>
+                  <div className="muted">No results — try uploading a document or change your query.</div>
+                </div>
+              ) : (
+                results.map(d => (
+                  <div className="result-card fade-in" key={d._id || d.id || d.title}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: '12px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '16px' }}>{d.title || d.filename || 'Document'}</div>
+                      <div className="muted" style={{ fontSize: 13 }}>{d._id || d.id ? String(d._id || d.id).slice(0, 8) : ''}</div>
+                    </div>
+
+                    {d.pages && d.pages.map(p => (
+                      <div key={p.pageNumber} style={{ marginTop: 12, background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <div className="muted" style={{ fontSize: 12 }}>Page {p.pageNumber}</div>
+                          <div className="muted" style={{ fontSize: 12 }}>Confidence: {Math.round(p.confidence || 0)}%</div>
+                        </div>
+                        <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: highlight(p.text || '', q) }} />
+                      </div>
+                    ))}
+
+                    {d.text && (
+                      <div style={{ marginTop: 10, whiteSpace: 'pre-wrap', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: highlight(d.text, q) }} />
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // App Component
+    function App() {
+      return (
+        <div className="app">
+          <header className="header fade-in">
+            <div className="brand">
+              <div className="logo">OCR</div>
+              <div>
+                <h1>Document OCR Search</h1>
+                <div className="sub">Upload documents, extract text, and search across pages.</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="status-badge">System Online</div>
+              <div className="muted" style={{ marginTop: 6 }}>Local OCR demo</div>
+            </div>
+          </header>
+
+          <main className="layout">
+            <aside>
+              <Upload />
+              
+              <div className="panel fade-in" style={{ marginTop: '24px' }}>
+                <h4 style={{ marginTop: 0 }}>Tips</h4>
+                <div className="tips-list">
+                  <div className="tip-item">
+                    <div className="tip-icon">💡</div>
+                    <div>Use high-quality scans for better OCR results.</div>
+                  </div>
+                  <div className="tip-item">
+                    <div className="tip-icon">💡</div>
+                    <div>Try language selection for non-English documents.</div>
+                  </div>
+                  <div className="tip-item">
+                    <div className="tip-icon">💡</div>
+                    <div>Run your backend at http://localhost:5001 for full integration.</div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <section>
+              <Search />
+            </section>
+          </main>
+        </div>
+      );
+    }
+
+    // Render the App
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>
